@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "*.json": "jsonc",
+        "Makefile2": "makefile",
+        "unistd.h": "c",
+        "video_manager.h": "c",
+        "disp_manager.h": "c",
+        "types.h": "c",
+        "config.h": "c"
+    },
+    "search.exclude": {
+        "**/*.o": true,
+        "**/*.d": true,
+    },
+    "files.exclude": {
+        "**/*.o": true,
+        "**/*.d": true,
+    },
+}

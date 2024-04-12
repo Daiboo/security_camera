@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include/**",
+                "/home/daiboo/codes/linux_kernel/nxp_4.1.15/include",
+                "/home/daiboo/codes/linux_kernel/nxp_4.1.15/arch/arm/include",
+                "/home/daiboo/codes/linux_kernel/nxp_4.1.15/arch/arm/include/generated",
+                "/usr/local/arm/arm-linux-guneabihf/bin/../lib/gcc/arm-linux-gnueabihf/4.9.4/include",
+                "/usr/local/arm/arm-linux-guneabihf/bin/../lib/gcc/arm-linux-gnueabihf/4.9.4/include-fixed",
+                "/usr/local/arm/arm-linux-guneabihf/bin/../arm-linux-gnueabihf/libc/usr/include",
+                "/usr/local/arm/arm-linux-guneabihf/bin/../arm-linux-gnueabihf/libc/usr/include"
+                
+            ],
+            "defines": [],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "compilerPath": "/usr/local/arm/arm-linux-guneabihf/bin/arm-linux-gnueabihf-gcc",
+            "intelliSenseMode": "linux-gcc-arm"
+        }
+    ],
+    "version": 4
+}
