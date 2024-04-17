@@ -1,6 +1,7 @@
 /* 用于frameBuffer设备 */
-#include <config.h>
-#include <disp_manager.h>
+#include "config.h"
+#include "disp_manager.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -39,9 +40,6 @@ static T_DispOpr g_tFBOpr = {
  * 输入参数： strDevPath - 设备文件路径
  * 输出参数： 无
  * 返 回 值： 0 - 成功, 其他值 - 失败
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 static int FBDeviceInit(const char* strDevPath)
 {
@@ -75,10 +73,10 @@ static int FBDeviceInit(const char* strDevPath)
 		return -1;
 	}
 
-	g_tFBOpr.iXres       = g_tFBVar.xres;
-	g_tFBOpr.iYres       = g_tFBVar.yres;
-	g_tFBOpr.iBpp        = g_tFBVar.bits_per_pixel;
-	g_tFBOpr.iLineWidth  = g_tFBVar.xres * g_tFBOpr.iBpp / 8;
+	g_tFBOpr.Xres       = g_tFBVar.xres;
+	g_tFBOpr.Yres       = g_tFBVar.yres;
+	g_tFBOpr.Bpp        = g_tFBVar.bits_per_pixel;
+	g_tFBOpr.lineWidth  = g_tFBVar.xres * g_tFBOpr.Bpp / 8;
 	g_tFBOpr.pucDispMem  = g_pucFBMem;
 
 	g_dwLineWidth  = g_tFBVar.xres * g_tFBVar.bits_per_pixel / 8;
@@ -96,9 +94,6 @@ static int FBDeviceInit(const char* strDevPath)
  *            dwColor - 颜色值,格式为32Bpp,即0x00RRGGBB
  * 输出参数： 无
  * 返 回 值： 0 - 成功, 其他值 - 失败
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 static int FBShowPixel(int iX, int iY, unsigned int dwColor)
 {
@@ -160,15 +155,12 @@ static int FBShowPixel(int iX, int iY, unsigned int dwColor)
  * 输入参数： ptVideoMem - 内含整屏的象素数据
  * 输出参数： 无
  * 返 回 值： 0 - 成功, 其他值 - 失败
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 static int FBShowPage(PT_PixelDatas ptPixelDatas)
 {
     if (g_tFBOpr.pucDispMem != ptPixelDatas->aucPixelDatas)
     {
-    	memcpy(g_tFBOpr.pucDispMem, ptPixelDatas->aucPixelDatas, ptPixelDatas->iTotalBytes);
+    	memcpy(g_tFBOpr.pucDispMem, ptPixelDatas->aucPixelDatas, ptPixelDatas->totalBytes);
     }
 	return 0;
 }
@@ -179,9 +171,6 @@ static int FBShowPage(PT_PixelDatas ptPixelDatas)
  * 输入参数： dwBackColor - 整个屏幕设置为该颜色
  * 输出参数： 无
  * 返 回 值： 0 - 成功, 其他值 - 失败
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 static int FBCleanScreen(unsigned int dwBackColor)
 {
@@ -248,9 +237,6 @@ static int FBCleanScreen(unsigned int dwBackColor)
  * 输入参数： 无
  * 输出参数： 无
  * 返 回 值： 0 - 成功, 其他值 - 失败
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 int FBInit(void)
 {

@@ -52,3 +52,11 @@ Mkfile.old
 dkms.conf
 build/**
 security_camera
+
+
+# test files
+frame*.jpg
+
+test/qtlabel
+test/video_test
+test/window_test

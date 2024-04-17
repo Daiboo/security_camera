@@ -6,7 +6,13 @@
         "video_manager.h": "c",
         "disp_manager.h": "c",
         "types.h": "c",
-        "config.h": "c"
+        "config.h": "c",
+        "qpixmap": "cpp",
+        "jpeglib.h": "c",
+        "setjmp.h": "c",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
     },
     "search.exclude": {
         "**/*.o": true,

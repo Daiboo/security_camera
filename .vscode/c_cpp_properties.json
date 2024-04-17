@@ -11,7 +11,11 @@
                 "/usr/local/arm/arm-linux-guneabihf/bin/../lib/gcc/arm-linux-gnueabihf/4.9.4/include",
                 "/usr/local/arm/arm-linux-guneabihf/bin/../lib/gcc/arm-linux-gnueabihf/4.9.4/include-fixed",
                 "/usr/local/arm/arm-linux-guneabihf/bin/../arm-linux-gnueabihf/libc/usr/include",
-                "/usr/local/arm/arm-linux-guneabihf/bin/../arm-linux-gnueabihf/libc/usr/include"
+                "/usr/local/arm/arm-linux-guneabihf/bin/../arm-linux-gnueabihf/libc/usr/include",
+                "/home/daiboo/Qt5.12.9/5.12.9/gcc_64/include/**",
+                "/usr/include/**",
+                "/usr/local/include/**",
+                "/home/daiboo/toolchain/libjpeg-turbo-2.1.5.1/build/install_x86_64/include"
                 
             ],
             "defines": [],

@@ -120,9 +120,9 @@ int GetDispResolution(int *piXres, int *piYres, int *piBpp)
 {
 	if (g_ptDefaultDispOpr)
 	{
-		*piXres = g_ptDefaultDispOpr->iXres;
-		*piYres = g_ptDefaultDispOpr->iYres;
-		*piBpp  = g_ptDefaultDispOpr->iBpp;
+		*piXres = g_ptDefaultDispOpr->Xres;
+		*piYres = g_ptDefaultDispOpr->Yres;
+		*piBpp  = g_ptDefaultDispOpr->Bpp;
 		return 0;
 	}
 	else
@@ -142,13 +142,13 @@ int GetDispResolution(int *piXres, int *piYres, int *piBpp)
  ***********************************************************************/
 int GetVideoBufForDisplay(PT_VideoBuf ptFrameBuf)
 {
-    ptFrameBuf->pixelFormat = (g_ptDefaultDispOpr->iBpp == 16) ? V4L2_PIX_FMT_RGB565 : \
-                                   (g_ptDefaultDispOpr->iBpp == 32) ?  V4L2_PIX_FMT_RGB32 : \
+    ptFrameBuf->pixelFormat = (g_ptDefaultDispOpr->Bpp == 16) ? V4L2_PIX_FMT_RGB565 : \
+                                   (g_ptDefaultDispOpr->Bpp == 32) ?  V4L2_PIX_FMT_RGB32 : \
                                            0;
-    ptFrameBuf->width  = g_ptDefaultDispOpr->iXres;
-    ptFrameBuf->height = g_ptDefaultDispOpr->iYres;
-    ptFrameBuf->Bpp    = g_ptDefaultDispOpr->iBpp;
-    ptFrameBuf->lineBytes    = g_ptDefaultDispOpr->iLineWidth;
+    ptFrameBuf->width  = g_ptDefaultDispOpr->Xres;
+    ptFrameBuf->height = g_ptDefaultDispOpr->Yres;
+    ptFrameBuf->Bpp    = g_ptDefaultDispOpr->Bpp;
+    ptFrameBuf->lineBytes    = g_ptDefaultDispOpr->lineWidth;
     ptFrameBuf->totalBytes   = ptFrameBuf->lineBytes * ptFrameBuf->height;
     ptFrameBuf->aucPixelDatas = g_ptDefaultDispOpr->pucDispMem;
     return 0;
@@ -169,28 +169,25 @@ void FlushPixelDatasToDev(PT_PixelDatas ptPixelDatas)
  * 输出参数： 无
  * 返 回 值： 0  - 成功
  *            -1 - 失败(未使用SelectAndInitDefaultDispDev来选择显示模块)
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 int AllocVideoMem(int iNum)
 {
 	int i;
 
-	int iXres = 0;
-	int iYres = 0;
-	int iBpp  = 0;
+	int Xres = 0;
+	int Yres = 0;
+	int Bpp  = 0;
 
 	int iVMSize;
-	int iLineBytes;
+	int lineBytes;
 
 	PT_VideoMem ptNew;
 
 	/* 确定VideoMem的大小
 	 */
-	GetDispResolution(&iXres, &iYres, &iBpp);
-	iVMSize = iXres * iYres * iBpp / 8;
-	iLineBytes = iXres * iBpp / 8;
+	GetDispResolution(&Xres, &Yres, &Bpp);
+	iVMSize = Xres * Yres * Bpp / 8;
+	lineBytes = Xres * Bpp / 8;
 
 	/* 先把设备本身的framebuffer放入链表
 	 * 分配一个T_VideoMem结构体, 注意我们没有分配里面的tPixelDatas.aucPixelDatas
@@ -209,11 +206,11 @@ int AllocVideoMem(int iNum)
 	ptNew->bDevFrameBuffer = 1;        /* 表示这个VideoMem是设备本身的framebuffer, 而不是用作缓存作用的VideoMem */
 	ptNew->eVideoMemState  = VMS_FREE;
 	ptNew->ePicState	   = PS_BLANK;
-	ptNew->tPixelDatas.iWidth  = iXres;
-	ptNew->tPixelDatas.iHeight = iYres;
-	ptNew->tPixelDatas.iBpp    = iBpp;
-	ptNew->tPixelDatas.iLineBytes  = iLineBytes;
-	ptNew->tPixelDatas.iTotalBytes = iVMSize;
+	ptNew->tPixelDatas.width  = Xres;
+	ptNew->tPixelDatas.height = Yres;
+	ptNew->tPixelDatas.Bpp    = Bpp;
+	ptNew->tPixelDatas.lineBytes  = lineBytes;
+	ptNew->tPixelDatas.totalBytes = iVMSize;
 
 	if (iNum != 0)
 	{
@@ -247,11 +244,11 @@ int AllocVideoMem(int iNum)
 		ptNew->bDevFrameBuffer = 0;
 		ptNew->eVideoMemState = VMS_FREE;
 		ptNew->ePicState      = PS_BLANK;
-		ptNew->tPixelDatas.iWidth  = iXres;
-		ptNew->tPixelDatas.iHeight = iYres;
-		ptNew->tPixelDatas.iBpp    = iBpp;
-		ptNew->tPixelDatas.iLineBytes = iLineBytes;
-		ptNew->tPixelDatas.iTotalBytes = iVMSize;
+		ptNew->tPixelDatas.width  = Xres;
+		ptNew->tPixelDatas.height = Yres;
+		ptNew->tPixelDatas.Bpp    = Bpp;
+		ptNew->tPixelDatas.lineBytes = lineBytes;
+		ptNew->tPixelDatas.totalBytes = iVMSize;
 
 		/* 放入链表 */
 		ptNew->ptNext = g_ptVideoMemHead;
@@ -271,9 +268,6 @@ int AllocVideoMem(int iNum)
  * 输出参数： 无
  * 返 回 值： NULL   - 失败,没有可用的VideoMem
  *            非NULL - 成功,返回PT_VideoMem结构体
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 PT_VideoMem GetVideoMem(int iID, int bCur)
 {
@@ -336,9 +330,6 @@ PT_VideoMem GetVideoMem(int iID, int bCur)
  * 输入参数： ptVideoMem - 使用完毕的VideoMem
  * 输出参数： 无
  * 返 回 值： 无
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 void PutVideoMem(PT_VideoMem ptVideoMem)
 {
@@ -355,9 +346,6 @@ void PutVideoMem(PT_VideoMem ptVideoMem)
  * 输入参数： 无
  * 输出参数： 无
  * 返 回 值： 显存对应的VideoMem结构体指针
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 PT_VideoMem GetDevVideoMem(void)
 {
@@ -382,9 +370,6 @@ PT_VideoMem GetDevVideoMem(void)
  *            dwColor    - 设置为该颜色
  * 输出参数： 无
  * 返 回 值： 无
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 void ClearVideoMem(PT_VideoMem ptVideoMem, unsigned int dwColor)
 {
@@ -401,11 +386,11 @@ void ClearVideoMem(PT_VideoMem ptVideoMem, unsigned int dwColor)
 	pwVM16bpp  = (unsigned short *)pucVM;
 	pdwVM32bpp = (unsigned int *)pucVM;
 
-	switch (ptVideoMem->tPixelDatas.iBpp)
+	switch (ptVideoMem->tPixelDatas.Bpp)
 	{
 		case 8:
 		{
-			memset(pucVM, dwColor, ptVideoMem->tPixelDatas.iTotalBytes);
+			memset(pucVM, dwColor, ptVideoMem->tPixelDatas.totalBytes);
 			break;
 		}
 		case 16:
@@ -415,7 +400,7 @@ void ClearVideoMem(PT_VideoMem ptVideoMem, unsigned int dwColor)
 			iGreen = (dwColor >> (8+2)) & 0x3f;
 			iBlue  = (dwColor >> 3) & 0x1f;
 			wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
-			while (i < ptVideoMem->tPixelDatas.iTotalBytes)
+			while (i < ptVideoMem->tPixelDatas.totalBytes)
 			{
 				*pwVM16bpp	= wColor16bpp;
 				pwVM16bpp++;
@@ -425,7 +410,7 @@ void ClearVideoMem(PT_VideoMem ptVideoMem, unsigned int dwColor)
 		}
 		case 32:
 		{
-			while (i < ptVideoMem->tPixelDatas.iTotalBytes)
+			while (i < ptVideoMem->tPixelDatas.totalBytes)
 			{
 				*pdwVM32bpp = dwColor;
 				pdwVM32bpp++;
@@ -435,7 +420,7 @@ void ClearVideoMem(PT_VideoMem ptVideoMem, unsigned int dwColor)
 		}
 		default :
 		{
-			DBG_PRINTF("can't support %d bpp\n", ptVideoMem->tPixelDatas.iBpp);
+			DBG_PRINTF("can't support %d bpp\n", ptVideoMem->tPixelDatas.Bpp);
 			return;
 		}
 	}
@@ -451,9 +436,6 @@ void ClearVideoMem(PT_VideoMem ptVideoMem, unsigned int dwColor)
  *            dwColor    - 设置为该颜色
  * 输出参数： 无
  * 返 回 值： 无
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 void ClearVideoMemRegion(PT_VideoMem ptVideoMem, PT_Layout ptLayout, unsigned int dwColor)
 {
@@ -469,20 +451,20 @@ void ClearVideoMemRegion(PT_VideoMem ptVideoMem, PT_Layout ptLayout, unsigned in
     int iLineBytesClear;
     int i;
 
-	pucVM	   = ptVideoMem->tPixelDatas.aucPixelDatas + ptLayout->iTopLeftY * ptVideoMem->tPixelDatas.iLineBytes + ptLayout->iTopLeftX * ptVideoMem->tPixelDatas.iBpp / 8;
+	pucVM	   = ptVideoMem->tPixelDatas.aucPixelDatas + ptLayout->topLeftY * ptVideoMem->tPixelDatas.lineBytes + ptLayout->topLeftX * ptVideoMem->tPixelDatas.Bpp / 8;
 	pwVM16bpp  = (unsigned short *)pucVM;
 	pdwVM32bpp = (unsigned int *)pucVM;
 
-    iLineBytesClear = (ptLayout->iBotRightX - ptLayout->iTopLeftX + 1) * ptVideoMem->tPixelDatas.iBpp / 8;
+    iLineBytesClear = (ptLayout->botRightX - ptLayout->topLeftX + 1) * ptVideoMem->tPixelDatas.Bpp / 8;
 
-	switch (ptVideoMem->tPixelDatas.iBpp)
+	switch (ptVideoMem->tPixelDatas.Bpp)
 	{
 		case 8:
 		{
-            for (iY = ptLayout->iTopLeftY; iY <= ptLayout->iBotRightY; iY++)
+            for (iY = ptLayout->topLeftY; iY <= ptLayout->botRightY; iY++)
             {
     			memset(pucVM, dwColor, iLineBytesClear);
-                pucVM += ptVideoMem->tPixelDatas.iLineBytes;
+                pucVM += ptVideoMem->tPixelDatas.lineBytes;
             }
 			break;
 		}
@@ -493,33 +475,33 @@ void ClearVideoMemRegion(PT_VideoMem ptVideoMem, PT_Layout ptLayout, unsigned in
 			iGreen = (dwColor >> (8+2)) & 0x3f;
 			iBlue  = (dwColor >> 3) & 0x1f;
 			wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
-            for (iY = ptLayout->iTopLeftY; iY <= ptLayout->iBotRightY; iY++)
+            for (iY = ptLayout->topLeftY; iY <= ptLayout->botRightY; iY++)
             {
                 i = 0;
-                for (iX = ptLayout->iTopLeftX; iX <= ptLayout->iBotRightX; iX++)
+                for (iX = ptLayout->topLeftX; iX <= ptLayout->botRightX; iX++)
     			{
     				pwVM16bpp[i++]	= wColor16bpp;
     			}
-                pwVM16bpp = (unsigned short *)((unsigned int)pwVM16bpp + ptVideoMem->tPixelDatas.iLineBytes);
+                pwVM16bpp = (unsigned short *)((unsigned int)pwVM16bpp + ptVideoMem->tPixelDatas.lineBytes);
             }
 			break;
 		}
 		case 32:
 		{
-            for (iY = ptLayout->iTopLeftY; iY <= ptLayout->iBotRightY; iY++)
+            for (iY = ptLayout->topLeftY; iY <= ptLayout->botRightY; iY++)
             {
                 i = 0;
-                for (iX = ptLayout->iTopLeftX; iX <= ptLayout->iBotRightX; iX++)
+                for (iX = ptLayout->topLeftX; iX <= ptLayout->botRightX; iX++)
     			{
     				pdwVM32bpp[i++]	= dwColor;
     			}
-                pdwVM32bpp = (unsigned int *)((unsigned int)pdwVM32bpp + ptVideoMem->tPixelDatas.iLineBytes);
+                pdwVM32bpp = (unsigned int *)((unsigned int)pdwVM32bpp + ptVideoMem->tPixelDatas.lineBytes);
             }
 			break;
 		}
 		default :
 		{
-			DBG_PRINTF("can't support %d bpp\n", ptVideoMem->tPixelDatas.iBpp);
+			DBG_PRINTF("can't support %d bpp\n", ptVideoMem->tPixelDatas.Bpp);
 			return;
 		}
 	}
@@ -532,9 +514,6 @@ void ClearVideoMemRegion(PT_VideoMem ptVideoMem, PT_Layout ptLayout, unsigned in
  * 输入参数： 无
  * 输出参数： 无
  * 返 回 值： 0 - 成功, 其他值 - 失败
- * 修改日期        版本号     修改人	      修改内容
- * -----------------------------------------------
- * 2013/02/08	     V1.0	  韦东山	      创建
  ***********************************************************************/
 int DisplayInit(void)
 {

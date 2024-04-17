@@ -5,11 +5,11 @@
 
 /* 图片的象素数据 */
 typedef struct PixelDatas {
-	int iWidth;   /* 宽度: 一行有多少个象素 */
-	int iHeight;  /* 高度: 一列有多少个象素 */
-	int iBpp;     /* 一个象素用多少位来表示 */
-	int iLineBytes;  /* 一行数据有多少字节 */
-	int iTotalBytes; /* 所有字节数 */ 
+	int width;   /* 宽度: 一行有多少个象素 */
+	int height;  /* 高度: 一列有多少个象素 */
+	int Bpp;     /* 一个象素用多少位来表示 */
+	int lineBytes;  /* 一行数据有多少字节 */
+	int totalBytes; /* 所有字节数 */ 
 	unsigned char *aucPixelDatas;  /* 象素数据存储的地方 */
 }T_PixelDatas, *PT_PixelDatas;
 
@@ -18,10 +18,10 @@ typedef struct PixelDatas {
  * 如果是图标,还含有图标的文件名
  */
 typedef struct Layout {
-	int iTopLeftX;
-	int iTopLeftY;
-	int iBotRightX;
-	int iBotRightY;
+	int topLeftX;
+	int topLeftY;
+	int botRightX;
+	int botRightY;
 	char *strIconName;
 }T_Layout, *PT_Layout;
 
@@ -56,10 +56,10 @@ typedef struct VideoMem {
 
 typedef struct DispOpr {
 	char *name;              /* 显示模块的名字 */
-	int iXres;               /* X分辨率 */
-	int iYres;               /* Y分辨率 */
-	int iBpp;                /* 一个象素用多少位来表示 */
-	int iLineWidth;          /* 一行数据占据多少字节 */
+	int Xres;               /* X分辨率 */
+	int Yres;               /* Y分辨率 */
+	int Bpp;                /* 一个象素用多少位来表示 */
+	int lineWidth;          /* 一行数据占据多少字节 */
 	unsigned char *pucDispMem;   /* 显存地址 */
 	int (*DeviceInit)(void);     /* 设备初始化函数 */
 	int (*ShowPixel)(int iPenX, int iPenY, unsigned int dwColor);    /* 把指定座标的象素设为某颜色 */
