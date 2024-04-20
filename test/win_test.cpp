@@ -1,5 +1,3 @@
-#include "config.h"
-#include "video_manager.h"
 #include <stdio.h>
 #include <QApplication>
 #include <QLabel>
@@ -12,17 +10,38 @@
 #include <signal.h>
 #include <unistd.h>
 #include <jpeglib.h>
+#include <stdlib.h>
+#include "config.h"
+#include "video_manager.h"
+#include "convert_manager.h"
 
 void handle_sigint(int sig);
 T_VideoDevice g_tVideoDevice;
+T_VideoBuf tConvertBuf;
+
+
+class MyWindow : public QWidget
+{
+    Q_OBJECT
+
+public:
+    MyWindow(QWidget *parent = nullptr);
+    ~MyWindow();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
+};
 
 
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QLabel label;
-    
-    label.show();
+    PT_VideoBuf ptVideoBufCur;
+    T_VideoBuf tVideoBuf;
+ 
+    PT_VideoConvert ptVideoConvertor;
+    int ret;
 
 
     if(argc < 2)
@@ -31,75 +50,88 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+
     signal(SIGINT, handle_sigint);
 
     
-    T_VideoBuf g_tVideoBuf;
+    // 初始化摄像头
     constructV4l2(&g_tVideoDevice, 1280, 720);
-    g_tVideoDevice.InitDevice(argv[1], &g_tVideoDevice);  // 初始化
-    g_tVideoDevice.StartDevice(&g_tVideoDevice);         // 开启设备
-
+    ret = g_tVideoDevice.InitDevice(argv[1], &g_tVideoDevice);  // 初始化
+    if(ret != 0)
+    {
+        printf("InitDevice error\n");
+        return -1;
+    }
+    
     label.resize(g_tVideoDevice.width, g_tVideoDevice.height);
 
+    // 初始化videoconvert
+    int iPixelFormatOfVideo = g_tVideoDevice.GetFormat(&g_tVideoDevice);
+    int iPixelFormatOfDisp = V4L2_PIX_FMT_RGB24;
+    // videoconvert
+    VideoConvertInit();
+    ptVideoConvertor = GetVideoConvertForFormats(iPixelFormatOfVideo, iPixelFormatOfDisp);
+    if (NULL == ptVideoConvertor)
+    {
+        DBG_PRINTF("can not support this format convert\n");
+        return -1;
+    }
+
+    // 打开摄像头
+    ret = g_tVideoDevice.StartDevice(&g_tVideoDevice);         // 开启设备
+    if(ret != 0)
+    {
+        printf("StartDevice error\n");
+        return -1;
+    }
+
+    memset(&tVideoBuf, 0, sizeof(tVideoBuf));
+    memset(&tConvertBuf, 0, sizeof(tConvertBuf));
+    tConvertBuf.pixelFormat     = iPixelFormatOfDisp;
+    tConvertBuf.Bpp = 24;
+
+    label.show();
 
     while(1)
     {
-        if(g_tVideoDevice.GetFrame(&g_tVideoDevice, &g_tVideoBuf) == 0)
+        if(g_tVideoDevice.GetFrame(&g_tVideoDevice, &tVideoBuf))
         {
-            printf("1\n");
-            // 创建一个JPEG解压对象
-            jpeg_decompress_struct cinfo;
-            jpeg_error_mgr jerr;
-            cinfo.err = jpeg_std_error(&jerr);
-            jpeg_create_decompress(&cinfo);
-
-            printf("1\n");
-            // 设置JPEG数据源
-            jpeg_mem_src(&cinfo, g_tVideoBuf.aucPixelDatas, g_tVideoBuf.totalBytes);
-            // 打印g_tVideoBuf.aucPixelDatas前两个字节
-            printf("0x%02x 0x%02x\n", g_tVideoBuf.aucPixelDatas[0], g_tVideoBuf.aucPixelDatas[1]);
-            printf("2\n");
-            jpeg_read_header(&cinfo, TRUE);
-            // 开始解压
-            jpeg_start_decompress(&cinfo);
-    
-        
-            // 输出图像的宽度和高度
-            printf("output_width: %d\n", cinfo.output_width);
-            printf("output_height: %d\n", cinfo.output_height);
-            printf("output_components: %d\n", cinfo.output_components);
-            printf("3\n");
-            // 读取像素数据
-            unsigned char *rawData = new unsigned char[cinfo.output_width * cinfo.output_height * cinfo.output_components];
-            printf("4\n");
-            while (cinfo.output_scanline < cinfo.output_height) {
-                unsigned char *bufferArray[1];
-                bufferArray[0] = rawData + (cinfo.output_scanline) * cinfo.output_width * cinfo.output_components;
-                jpeg_read_scanlines(&cinfo, bufferArray, 1);
-            }
-            printf("5\n");
-            QImage image(rawData,cinfo.output_width,cinfo.output_height,QImage::Format_RGB888);
-            // QImage image = QImage::fromData(rawData, cinfo.output_width * cinfo.output_height * cinfo.output_components, "RGB");
-            printf("6\n");
-            label.setPixmap(QPixmap::fromImage(image));
-            printf("7\n");
-            delete[] rawData;
-            jpeg_finish_decompress(&cinfo);
-            jpeg_destroy_decompress(&cinfo);
-            g_tVideoDevice.PutFrame(&g_tVideoDevice, &g_tVideoBuf);
-            QApplication::processEvents();
+            printf("GetFrame error\n");
+            continue;
         }
+        ptVideoBufCur = &tVideoBuf;
+        if(iPixelFormatOfVideo != iPixelFormatOfDisp)
+        {
+            // 转换为RGB
+            ret = ptVideoConvertor->Convert(&tVideoBuf, &tConvertBuf);
+            printf("Convert %s, ret = %d\n", ptVideoConvertor->name, ret);
+            if(ret)
+            {
+                printf("Convert error\n");
+                continue;
+            }
+            ptVideoBufCur = &tConvertBuf;
+        }
+        
+        // 显示在QLabel上
+        QImage image(ptVideoBufCur->aucPixelDatas,tConvertBuf.width,tConvertBuf.height,QImage::Format_RGB888);
+        label.setPixmap(QPixmap::fromImage(image));
 
+        g_tVideoDevice.PutFrame(&g_tVideoDevice, &tVideoBuf);
+        QApplication::processEvents();
     }
 
-    // return app.exec();
-    return 0;
+    return app.exec();
 
 }
 
 void handle_sigint(int sig)
 {
     deconstructV4l2(&g_tVideoDevice);
-    
+    if(tConvertBuf.aucPixelDatas)
+    {
+        free(tConvertBuf.aucPixelDatas);
+        tConvertBuf.aucPixelDatas = NULL;
+    }
     exit(0);
 }

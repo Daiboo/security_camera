@@ -12,7 +12,9 @@
         "setjmp.h": "c",
         "array": "cpp",
         "string": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "typeinfo": "cpp",
+        "qapplication": "cpp"
     },
     "search.exclude": {
         "**/*.o": true,

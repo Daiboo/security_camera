@@ -1,39 +1,47 @@
-#include "video_manager.h"
+#include "convert_manager.h"
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
 #include <jpeglib.h>
+#include <linux/videodev2.h>
 
 typedef struct MyErrorMgr
 {
 	struct jpeg_error_mgr pub;
 	jmp_buf setjmp_buffer;
-}T_MyErrorMgr, *PT_MyErrorMgr;
-
-
+} T_MyErrorMgr, *PT_MyErrorMgr;
 
 static int isSupportMjpeg2Rgb(int iPixelFormatIn, int iPixelFormatOut)
 {
-    if (iPixelFormatIn != V4L2_PIX_FMT_MJPEG)
-        return 0;
-    if ((iPixelFormatOut != V4L2_PIX_FMT_RGB565) && (iPixelFormatOut != V4L2_PIX_FMT_RGB32))
-    {
-        return 0;
-    }
-    return 1;
+	if (iPixelFormatIn != V4L2_PIX_FMT_MJPEG)
+		return 0;
+	if ((iPixelFormatOut != V4L2_PIX_FMT_RGB565) 
+		&& (iPixelFormatOut != V4L2_PIX_FMT_RGB32) 
+		&& (iPixelFormatOut != V4L2_PIX_FMT_RGB24))
+	{
+		return 0;
+	}
+	return 1;
 }
 
-
-
+/**********************************************************************
+ * 函数名称： MyErrorExit
+ * 功能描述： 自定义的libjpeg库出错处理函数
+ *            默认的错误处理函数是让程序退出,我们当然不会使用它
+ *            参考libjpeg里的bmp.c编写了这个错误处理函数
+ * 输入参数： ptCInfo - libjpeg库抽象出来的通用结构体
+ * 输出参数： 无
+ * 返 回 值： 无
+ ***********************************************************************/
 static void MyErrorExit(j_common_ptr ptCInfo)
 {
-    static char errStr[JMSG_LENGTH_MAX];
-    
+	static char errStr[JMSG_LENGTH_MAX];
+
 	PT_MyErrorMgr ptMyErr = (PT_MyErrorMgr)ptCInfo->err;
 
-    /* Create the message */
-    (*ptCInfo->err->format_message) (ptCInfo, errStr);
-    DBG_PRINTF("%s\n", errStr);
+	/* Create the message */
+	(*ptCInfo->err->format_message)(ptCInfo, errStr);
+	DBG_PRINTF("%s\n", errStr);
 
 	longjmp(ptMyErr->setjmp_buffer, 1);
 }
@@ -57,7 +65,7 @@ static int CovertOneLine(int iWidth, int iSrcBpp, int iDstBpp, unsigned char *pu
 	unsigned int dwColor;
 
 	unsigned short *pwDstDatas16bpp = (unsigned short *)pudDstDatas;
-	unsigned int   *pwDstDatas32bpp = (unsigned int *)pudDstDatas;
+	unsigned int *pwDstDatas32bpp = (unsigned int *)pudDstDatas;
 
 	int i;
 	int pos = 0;
@@ -69,15 +77,15 @@ static int CovertOneLine(int iWidth, int iSrcBpp, int iDstBpp, unsigned char *pu
 
 	if (iDstBpp == 24)
 	{
-		memcpy(pudDstDatas, pudSrcDatas, iWidth*3);
+		memcpy(pudDstDatas, pudSrcDatas, iWidth * 3);
 	}
 	else
 	{
 		for (i = 0; i < iWidth; i++)
 		{
-			dwRed   = pudSrcDatas[pos++];
+			dwRed = pudSrcDatas[pos++];
 			dwGreen = pudSrcDatas[pos++];
-			dwBlue  = pudSrcDatas[pos++];
+			dwBlue = pudSrcDatas[pos++];
 			if (iDstBpp == 32)
 			{
 				dwColor = (dwRed << 16) | (dwGreen << 8) | dwBlue;
@@ -87,9 +95,9 @@ static int CovertOneLine(int iWidth, int iSrcBpp, int iDstBpp, unsigned char *pu
 			else if (iDstBpp == 16)
 			{
 				/* 565 */
-				dwRed   = dwRed >> 3;
+				dwRed = dwRed >> 3;
 				dwGreen = dwGreen >> 2;
-				dwBlue  = dwBlue >> 3;
+				dwBlue = dwBlue >> 3;
 				dwColor = (dwRed << 11) | (dwGreen << 5) | (dwBlue);
 				*pwDstDatas16bpp = dwColor;
 				pwDstDatas16bpp++;
@@ -99,7 +107,6 @@ static int CovertOneLine(int iWidth, int iSrcBpp, int iDstBpp, unsigned char *pu
 	return 0;
 }
 
-
 /**********************************************************************
  * 函数名称： GetPixelDatasFrmJPG
  * 功能描述： 把JPG文件中的图像数据,取出并转换为能在显示设备上使用的格式
@@ -107,94 +114,113 @@ static int CovertOneLine(int iWidth, int iSrcBpp, int iDstBpp, unsigned char *pu
  * 输出参数： ptPixelDatas - 内含象素数据
  *            ptPixelDatas->iBpp 是输入的参数, 它确定从JPG文件得到的数据要转换为该BPP
  * 返 回 值： 0 - 成功, 其他值 - 失败
- * 修改日期        版本号     修改人          修改内容
- * -----------------------------------------------
- * 2013/02/08        V1.0     韦东山          创建
  ***********************************************************************/
-//static int GetPixelDatasFrmJPG(PT_FileMap ptFileMap, PT_PixelDatas ptPixelDatas)
+// static int GetPixelDatasFrmJPG(PT_FileMap ptFileMap, PT_PixelDatas ptPixelDatas)
 /* 把内存里的JPEG图像转换为RGB图像 */
 static int Mjpeg2RgbConvert(PT_VideoBuf ptVideoBufIn, PT_VideoBuf ptVideoBufOut)
 {
 	struct jpeg_decompress_struct tDInfo;
-	//struct jpeg_error_mgr tJErr;
-    int iRet;
-    int iRowStride;
-    unsigned char *aucLineBuffer = NULL;
-    unsigned char *pucDest;
+	// struct jpeg_error_mgr tJErr;
+	int iRet;
+	int iRowStride;
+	unsigned char *aucLineBuffer = NULL;
+	unsigned char *pucDest;
 	T_MyErrorMgr tJerr;
 
 	// 分配和初始化一个decompression结构体
-	//tDInfo.err = jpeg_std_error(&tJErr);
+	// tDInfo.err = jpeg_std_error(&tJErr);
 
-	tDInfo.err               = jpeg_std_error(&tJerr.pub);
-	tJerr.pub.error_exit     = MyErrorExit;
+	tDInfo.err = jpeg_std_error(&tJerr.pub);
+	tJerr.pub.error_exit = MyErrorExit;
 
-	if(setjmp(tJerr.setjmp_buffer))
+	if (setjmp(tJerr.setjmp_buffer))
 	{
 		/* 如果程序能运行到这里, 表示JPEG解码出错 */
-        jpeg_destroy_decompress(&tDInfo);
-        if (aucLineBuffer)
-        {
-            free(aucLineBuffer);
-        }
-        if (ptVideoBufOut->aucPixelDatas)
-        {
-            free(ptVideoBufOut->aucPixelDatas);
-        }
+		jpeg_destroy_decompress(&tDInfo);
+		if (aucLineBuffer)
+		{
+			free(aucLineBuffer);
+		}
+		if (ptVideoBufOut->aucPixelDatas)
+		{
+			free(ptVideoBufOut->aucPixelDatas);
+		}
 		return -1;
 	}
 
 	jpeg_create_decompress(&tDInfo);
 
 	// 用jpeg_read_header获得jpg信息
-	//jpeg_stdio_src(&tDInfo, ptFileMap->tFp);
+	// jpeg_stdio_src(&tDInfo, ptFileMap->tFp);
 	/* 把数据设为内存中的数据 */
-    jpeg_mem_src (&tDInfo, ptVideoBufIn->aucPixelDatas, ptVideoBufIn->totalBytes);
-    
+	jpeg_mem_src(&tDInfo, ptVideoBufIn->aucPixelDatas, ptVideoBufIn->totalBytes);
 
-    iRet = jpeg_read_header(&tDInfo, TRUE);
+	iRet = jpeg_read_header(&tDInfo, TRUE);
 
 	// 设置解压参数,比如放大、缩小
-    tDInfo.scale_num = tDInfo.scale_denom = 1;
-    
-	// 启动解压：jpeg_start_decompress	
+	tDInfo.scale_num = tDInfo.scale_denom = 1;
+
+	// 启动解压：jpeg_start_decompress
 	jpeg_start_decompress(&tDInfo);
-    
+
 	// 一行的数据长度
 	iRowStride = tDInfo.output_width * tDInfo.output_components;
-	aucLineBuffer = malloc(iRowStride);
+	aucLineBuffer = (unsigned char *)malloc(iRowStride);
 
-    if (NULL == aucLineBuffer)
-    {
-        return -1;
-    }
-
-	ptVideoBufOut->width  = tDInfo.output_width;
-	ptVideoBufOut->height = tDInfo.output_height;
-	//ptPixelDatas->iBpp    = iBpp;
-	ptVideoBufOut->lineBytes    = ptVideoBufOut->width * ptVideoBufOut->Bpp / 8;
-    ptVideoBufOut->totalBytes   = ptVideoBufOut->height * ptVideoBufOut->lineBytes;
-	if (NULL == ptVideoBufOut->aucPixelDatas)
+	if (NULL == aucLineBuffer)
 	{
-	    ptVideoBufOut->aucPixelDatas = malloc(ptVideoBufOut->totalBytes);
+		return -1;
 	}
 
-    pucDest = ptVideoBufOut->aucPixelDatas;
+	ptVideoBufOut->width = tDInfo.output_width;
+	ptVideoBufOut->height = tDInfo.output_height;
+	ptVideoBufOut->lineBytes = ptVideoBufOut->width * ptVideoBufOut->Bpp / 8;
+	ptVideoBufOut->totalBytes = ptVideoBufOut->height * ptVideoBufOut->lineBytes;
+	if (NULL == ptVideoBufOut->aucPixelDatas)
+	{
+		ptVideoBufOut->aucPixelDatas = (unsigned char *)malloc(ptVideoBufOut->totalBytes);
+	}
+
+	pucDest = ptVideoBufOut->aucPixelDatas;
 
 	// 循环调用jpeg_read_scanlines来一行一行地获得解压的数据
-	while (tDInfo.output_scanline < tDInfo.output_height) 
+	while (tDInfo.output_scanline < tDInfo.output_height)
 	{
-        /* 得到一行数据,里面的颜色格式为0xRR, 0xGG, 0xBB */
-		(void) jpeg_read_scanlines(&tDInfo, &aucLineBuffer, 1);
+		/* 得到一行数据,里面的颜色格式为0xRR, 0xGG, 0xBB */
+		(void)jpeg_read_scanlines(&tDInfo, &aucLineBuffer, 1);
 
 		// 转到ptPixelDatas去
 		CovertOneLine(ptVideoBufOut->width, 24, ptVideoBufOut->Bpp, aucLineBuffer, pucDest);
 		pucDest += ptVideoBufOut->lineBytes;
 	}
-	
+
 	free(aucLineBuffer);
 	jpeg_finish_decompress(&tDInfo);
 	jpeg_destroy_decompress(&tDInfo);
 
-    return 0;
+	return 0;
+}
+
+static int Mjpeg2RgbConvertExit(PT_VideoBuf ptVideoBufOut)
+{
+	if (ptVideoBufOut->aucPixelDatas)
+	{
+		free(ptVideoBufOut->aucPixelDatas);
+		ptVideoBufOut->aucPixelDatas = NULL;
+	}
+	return 0;
+}
+
+/* 构造 */
+static T_VideoConvert g_tMjpeg2RgbConvert = {
+	.name = "mjpeg2rgb",
+	.isSupport = isSupportMjpeg2Rgb,
+	.Convert = Mjpeg2RgbConvert,
+	.ConvertExit = Mjpeg2RgbConvertExit,
+};
+
+/* 注册 */
+int RegisterMjpeg2Rgb(void)
+{
+	return RegisterVideoConvert(&g_tMjpeg2RgbConvert);
 }

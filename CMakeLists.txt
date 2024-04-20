@@ -15,15 +15,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 添加子目录
 add_subdirectory(video)
+add_subdirectory(convert)
 
 # 添加可执行文件
 add_executable(security_camera "main.c")
 
-
-# 找到Qt库
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
-set(LIBJPEG_DIR "/home/daiboo/toolchain/libjpeg-turbo-2.1.5.1/build/install_x86_64")
-find_library(JPEG_LIBRARY NAMES jpeg PATHS ${LIBJPEG_DIR})
+# 包含库文件cmake
+include(${PROJECT_SOURCE_DIR}/library.cmake)
 
 # 目标链接库
 target_link_libraries(security_camera PUBLIC video)
@@ -42,7 +40,7 @@ target_include_directories(video_test PUBLIC "include" "${LIBJPEG_DIR}/include")
 # 创建一个可执行文件
 add_executable(window_test "test/win_test.cpp")
 set_target_properties(window_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(window_test PUBLIC Qt5::Widgets video ${JPEG_LIBRARY})
+target_link_libraries(window_test PUBLIC Qt5::Widgets video ${JPEG_LIBRARY} convert)
 target_include_directories(window_test PUBLIC "include" "${LIBJPEG_DIR}/include")
 
 add_executable(qtlabel "test/qtlabel.cpp")
